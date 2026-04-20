@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra 
 TARGET = app 
-SRC = main.c  
+SRC = app/main.c  
 BINDIR = app/cgi-bin
 
 .PHONY: all clean get post

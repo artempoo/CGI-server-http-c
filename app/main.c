@@ -60,6 +60,7 @@ int main(int argc, char* argv[], char* envp[]) {
             fptr = fopen(file_path, "r");
 
             if (fptr == NULL) {
+                printf("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n");
                 perror("Файл не найден");
                 return 1;
             }
