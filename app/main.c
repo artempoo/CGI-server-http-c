@@ -8,8 +8,75 @@ typedef struct {
     char* DOCUMENT_ROOT;
 } Headers;
 
+typedef struct {
+    char* url;
+    char* file_path;
+} TableUrl;
+
+TableUrl search_page(char* cur_path, TableUrl* table, int count) {
+    TableUrl result = {.url = "404", .file_path = "/pages/404.html"};
+
+    for (int i = 0; i < count; i++) {
+        if (strcmp(table[i].url, cur_path) == 0) {
+            result = table[i];
+            break;
+        }
+    }
+
+    return result;
+}
+
+int route(Headers env, TableUrl* table, char* cur_path) {
+    FILE* fptr;
+    int c;
+
+    TableUrl page = search_page(cur_path, table, 3);
+
+    char file_path[512];
+    snprintf(file_path, sizeof(file_path), "%s%s", env.DOCUMENT_ROOT, page.file_path);
+
+    fptr = fopen(file_path, "r");
+    if (fptr == NULL) {
+        printf("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n");
+        perror("Файл не найден");
+        return 1;
+    }
+
+    if (strcmp(page.url, "404") == 0) {
+        printf("HTTP/1.1 404 Not Found\r\n");
+        printf("Content-Type: text/html\r\n");
+        printf("Server: ponyx-server\r\n\r\n");
+
+    } else {
+        printf("HTTP/1.1 200 OK\r\n");
+        printf("Content-Type: text/html\r\n");
+        printf("Server: ponyx-server\r\n\r\n");
+    }
+
+    fflush(stdout);
+
+    while ((c = fgetc(fptr)) != EOF) {
+        putchar(c);
+    }
+
+    fclose(fptr);
+
+    return 0;
+}
+
 int main(int argc, char* argv[], char* envp[]) {
-    Headers env = {"", "", "", ""};
+    Headers env = {NULL, NULL, NULL, NULL};
+
+    TableUrl table[3];
+    table[0].url = "/";
+    table[0].file_path = "/pages/index.html";
+
+    table[1].url = "/contacts";
+    table[1].file_path = "/pages/contacts.html";
+
+    table[2].url = "404";
+    table[2].file_path = "/pages/404.html";
+
     const char* REQUEST_METHOD_NAME = "REQUEST_METHOD=";
     const char* QUERY_STRING_NAME = "QUERY_STRING=";
     const char* SCRIPT_NAME = "SCRIPT_NAME=";
@@ -29,54 +96,8 @@ int main(int argc, char* argv[], char* envp[]) {
         index_envp++;
     }
 
-    if (strcmp(env.REQUEST_METHOD, "GET") == 0) {
-        if (strcmp(env.SCRIPT_NAME, "/") == 0) {
-            FILE* fptr;
-            int c;
-            char* file_path = strcat(env.DOCUMENT_ROOT, "/pages/index.html");
-
-            fptr = fopen(file_path, "r");
-            if (fptr == NULL) {
-                perror("Файл не найден");
-                return 1;
-            }
-
-            printf("HTTP/1.1 200 OK\r\n");
-            printf("Content-Type: text/html\r\n");
-            printf("Server: ponyx-server\r\n\r\n");
-
-            fflush(stdout);
-
-            while ((c = fgetc(fptr)) != EOF) {
-                putchar(c);
-            }
-
-            fclose(fptr);
-        } else {
-            FILE* fptr;
-            int c;
-            char* file_path = strcat(env.DOCUMENT_ROOT, "/pages/404.html");
-
-            fptr = fopen(file_path, "r");
-
-            if (fptr == NULL) {
-                printf("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n");
-                perror("Файл не найден");
-                return 1;
-            }
-
-            printf("HTTP/1.1 404 Not Found\r\n");
-            printf("Content-Type: text/html\r\n");
-            printf("Server: ponyx-server\r\n\r\n");
-
-            fflush(stdout);
-
-            while ((c = fgetc(fptr)) != EOF) {
-                putchar(c);
-            }
-
-            fclose(fptr);
-        }
+    if (env.REQUEST_METHOD && strcmp(env.REQUEST_METHOD, "GET") == 0) {
+        route(env, table, env.SCRIPT_NAME ? env.SCRIPT_NAME : "/");
     }
 
     return 0;
